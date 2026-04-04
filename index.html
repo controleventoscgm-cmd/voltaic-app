@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Voltaic Spa | v1.2</title>
+    <title>Voltaic Spa | v1.3</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         :root { --accent: #22c55e; --bg: #000; --card: rgba(30, 41, 59, 0.8); }
@@ -37,95 +37,54 @@
         <button onclick="setT(3, this)" class="btn-t flex-1 py-3 rounded-xl">DIESEL</button>
     </div>
 
-    <div id="lista" class="space-y-4 text-center py-10 text-gray-500">
-        Iniciando sistemas de Voltaic...
-    </div>
+    <div id="lista" class="space-y-4 text-center py-10 text-gray-500">Iniciando sistemas...</div>
 
     <script>
-        let R = 15; 
-        let T = 1;  
+        let R = 15; let T = 1; 
         const E = 'cristiangodoymarchant@gmail.com'; 
         const K = 'Isigod5815';
 
         function setR(km, b){ R=km; upd(b, '.btn-r'); ini(); }
         function setT(t, b){ T=t; upd(b, '.btn-t'); ini(); }
-        
-        function upd(b, cls){ 
-            document.querySelectorAll(cls).forEach(x=>x.classList.remove('tab-active')); 
-            b.classList.add('tab-active'); 
-        }
+        function upd(b, cls){ document.querySelectorAll(cls).forEach(x=>x.classList.remove('tab-active')); b.classList.add('tab-active'); }
 
         async function ini() {
             const list = document.getElementById('lista');
-            list.innerHTML = '<div class="py-10"><p class="pulse text-green-500 font-bold uppercase tracking-widest">Conectando con CNE...</p></div>';
-            
+            list.innerHTML = '<p class="pulse text-green-500 font-bold uppercase tracking-widest">Conectando con CNE...</p>';
             navigator.geolocation.getCurrentPosition(async (pos) => {
-                const uLa = pos.coords.latitude;
-                const uLo = pos.coords.longitude;
-                
+                const uLa = pos.coords.latitude; const uLo = pos.coords.longitude;
                 try {
-                    const urlOriginal = `https://api.cne.cl/v3/combustibles/vehicular/estaciones?token=${K}&email=${E}`;
-                    const res = await fetch('https://corsproxy.io/?' + encodeURIComponent(urlOriginal));
-                    
-                    if (!res.ok) throw new Error('Error');
-                    
+                    const url = `https://api.cne.cl/v3/combustibles/vehicular/estaciones?token=${K}&email=${E}`;
+                    const res = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`);
                     const d = await res.json();
                     render(d.data, uLa, uLo);
                 } catch (e) {
-                    list.innerHTML = `<p class="py-10 text-red-400 font-bold uppercase tracking-widest">Reintentando conexión...</p>`;
-                    setTimeout(async () => {
-                        try {
-                            const urlOriginal = `https://api.cne.cl/v3/combustibles/vehicular/estaciones?token=${K}&email=${E}`;
-                            const res2 = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(urlOriginal));
-                            const d2 = await res2.json();
-                            render(d2.data, uLa, uLo);
-                        } catch(err2) {
-                            list.innerHTML = "Servidores de la CNE caídos. Intenta más tarde.";
-                        }
-                    }, 1000);
+                    list.innerHTML = '<p class="text-red-400">Error de conexión. Reintenta.</p>';
                 }
-            }, (err) => {
-                list.innerHTML = "Por favor, activa el GPS del iPhone y recarga la página.";
-            });
+            }, () => { list.innerHTML = "Activa el GPS."; });
         }
 
         function dist(la1, lo1, la2, lo2) {
             const rad = x => x * Math.PI / 180;
-            const dLa = rad(la2-la1); const dLo = rad(lo2-lo1);
-            const a = Math.sin(dLa/2)**2 + Math.cos(rad(la1)) * Math.cos(rad(la2)) * Math.sin(dLo/2)**2;
+            const a = Math.sin(rad(la2-la1)/2)**2 + Math.cos(rad(la1)) * Math.cos(rad(la2)) * Math.sin(rad(lo2-lo1)/2)**2;
             return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
         }
 
         function render(data, uLa, uLo) {
-            if(!data) return;
             let h = '';
             const f = data.map(e => ({...e, d: dist(uLa, uLo, e.ubicacion.latitud, e.ubicacion.longitud)}))
                          .filter(e => e.d <= R).sort((a,b) => a.d - b.d);
-
-            if(f.length === 0) {
-                document.getElementById('lista').innerHTML = `<p class="py-10 text-gray-400 font-bold uppercase">No hay bombas a ${R}KM.<br>Prueba subiendo el rango.</p>`;
-                return;
-            }
-
+            if(f.length === 0) { list.innerHTML = "No hay bombas cerca."; return; }
             f.forEach(e => {
                 const p = T==1 ? e.precios['gasolina 93'] : T==2 ? e.precios['gasolina 95'] : e.precios['petroleo diesel'];
                 if(!p) return;
-                
-                h += `<div class="glass p-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <div class="flex justify-between items-start mb-3">
-                        <div>
-                            <h3 class="font-black text-lg uppercase italic text-white leading-none">${e.nombre_fantasia}</h3>
-                            <p class="text-[9px] text-gray-400 mt-1 uppercase">${e.direccion}</p>
-                        </div>
-                        <span class="text-[10px] bg-white/10 px-2 py-1 rounded-full font-bold text-green-400">${e.d.toFixed(1)} KM</span>
+                h += `<div class="glass p-5 mb-4 text-left">
+                    <div class="flex justify-between items-start mb-2 text-white">
+                        <h3 class="font-bold uppercase italic">${e.nombre_fantasia}</h3>
+                        <span class="text-green-400 font-mono">${e.d.toFixed(1)} KM</span>
                     </div>
-                    <div class="bg-black/40 rounded-2xl p-4 border border-white/5 mb-4">
-                        <p class="text-[10px] font-bold text-green-500 leading-none">$${p}</p>
-                    </div>
-                    <button onclick="window.location.href='waze://?ll=${e.ubicacion.latitud},${e.ubicacion.longitud}&navigate=yes'" 
-                        class="w-full bg-[#33ccff] text-black font-black py-4 rounded-xl text-xs uppercase tracking-widest active:scale-95 transition-transform">
-                        Navegar con Waze
-                    </button>
+                    <p class="text-green-500 text-xl font-black mb-4">$${p}</p>
+                    <button onclick="window.location.href='waze://?ll=${e.ubicacion.latitud},${e.ubicacion.longitud}&navigate=yes'" class="w-full bg-[#33ccff] text-black font-bold py-3 rounded-xl text-xs uppercase">Waze</button>
                 </div>`;
             });
             document.getElementById('lista').innerHTML = h;
