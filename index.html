@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Voltaic Spa | v1.1</title>
+    <title>Voltaic Spa | v1.2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         :root { --accent: #22c55e; --bg: #000; --card: rgba(30, 41, 59, 0.8); }
@@ -57,21 +57,35 @@
 
         async function ini() {
             const list = document.getElementById('lista');
-            list.innerHTML = '<div class="py-10"><p class="pulse text-green-500 font-bold uppercase tracking-widest">Buscando Ahorro...</p></div>';
+            list.innerHTML = '<div class="py-10"><p class="pulse text-green-500 font-bold uppercase tracking-widest">Conectando con CNE...</p></div>';
             
             navigator.geolocation.getCurrentPosition(async (pos) => {
                 const uLa = pos.coords.latitude;
                 const uLo = pos.coords.longitude;
                 
                 try {
-                    const res = await fetch(`https://api.cne.cl/v3/combustibles/vehicular/estaciones?token=${K}&email=${E}`);
+                    const urlOriginal = `https://api.cne.cl/v3/combustibles/vehicular/estaciones?token=${K}&email=${E}`;
+                    const res = await fetch('https://corsproxy.io/?' + encodeURIComponent(urlOriginal));
+                    
+                    if (!res.ok) throw new Error('Error');
+                    
                     const d = await res.json();
                     render(d.data, uLa, uLo);
                 } catch (e) {
-                    list.innerHTML = "Error al conectar con CNE.";
+                    list.innerHTML = `<p class="py-10 text-red-400 font-bold uppercase tracking-widest">Reintentando conexión...</p>`;
+                    setTimeout(async () => {
+                        try {
+                            const urlOriginal = `https://api.cne.cl/v3/combustibles/vehicular/estaciones?token=${K}&email=${E}`;
+                            const res2 = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(urlOriginal));
+                            const d2 = await res2.json();
+                            render(d2.data, uLa, uLo);
+                        } catch(err2) {
+                            list.innerHTML = "Servidores de la CNE caídos. Intenta más tarde.";
+                        }
+                    }, 1000);
                 }
             }, (err) => {
-                list.innerHTML = "Por favor, activa el GPS del iPhone.";
+                list.innerHTML = "Por favor, activa el GPS del iPhone y recarga la página.";
             });
         }
 
@@ -83,6 +97,7 @@
         }
 
         function render(data, uLa, uLo) {
+            if(!data) return;
             let h = '';
             const f = data.map(e => ({...e, d: dist(uLa, uLo, e.ubicacion.latitud, e.ubicacion.longitud)}))
                          .filter(e => e.d <= R).sort((a,b) => a.d - b.d);
