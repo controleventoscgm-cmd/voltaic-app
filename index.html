@@ -3,92 +3,78 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Voltaic Spa | v2.0</title>
+    <title>Voltaic v1.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { background: #000; color: #fff; font-family: -apple-system, sans-serif; }
-        .glass-card { background: #1e293b; border-radius: 24px; border: 1px solid rgba(255,255,255,0.1); }
-        .price-box { background: #0f172a; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); }
-        .active-tab { border: 2px solid #22c55e; color: #22c55e !important; background: rgba(34, 197, 94, 0.1); }
+        body { background: #000; color: #fff; font-family: sans-serif; }
+        .glass { background: rgba(30, 41, 59, 0.8); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; }
+        .tab-active { background: #22c55e !important; color: #000 !important; font-weight: bold; }
     </style>
 </head>
-<body class="p-4 pb-20">
-    <header class="flex justify-between items-center mb-6 pt-2">
-        <div>
-            <h1 class="text-2xl font-black italic text-white uppercase leading-none">VOLTAIC<span class="text-blue-400 not-italic font-light">spa</span></h1>
-            <p class="text-[9px] text-green-400 font-bold uppercase tracking-widest mt-1">SISTEMA ACTIVO ✅</p>
-        </div>
-        <div class="w-10 h-10 glass-card flex items-center justify-center text-xl shadow-lg">⚡</div>
+<body class="p-4">
+    <header class="flex justify-between items-center mb-6 pt-4 uppercase italic font-black">
+        <h1 class="text-2xl">VOLTAIC<span class="text-green-500 font-light not-italic">spa</span></h1>
+        <div class="w-10 h-10 glass flex items-center justify-center text-lg">⚡</div>
     </header>
 
-    <div class="grid grid-cols-2 gap-3 mb-6">
-        <button onclick="setT(1, this)" id="t1" class="py-4 bg-[#1e293b] rounded-2xl font-bold text-xs active-tab">93 OCT</button>
-        <button onclick="setT(3, this)" id="t3" class="py-4 bg-[#1e293b] rounded-2xl font-bold text-xs">DIESEL</button>
+    <div class="glass p-1 flex gap-1 mb-4 text-[10px] font-bold uppercase">
+        <button onclick="setR(15, this)" class="btn-r flex-1 py-3 rounded-xl tab-active">15 KM</button>
+        <button onclick="setR(35, this)" class="btn-r flex-1 py-3 rounded-xl">35 KM</button>
+        <button onclick="setR(50, this)" class="btn-r flex-1 py-3 rounded-xl">50 KM</button>
     </div>
 
-    <div id="lista" class="space-y-6">Cargando estaciones...</div>
+    <div class="glass p-1 flex gap-1 mb-6 text-[10px] font-bold uppercase">
+        <button onclick="setT(1, this)" id="t1" class="btn-t flex-1 py-3 rounded-xl tab-active">93 Oct</button>
+        <button onclick="setT(3, this)" id="t3" class="btn-t flex-1 py-3 rounded-xl">Diesel</button>
+    </div>
+
+    <div id="lista" class="space-y-4">Cargando estaciones...</div>
 
     <script>
-        let T = 1;
+        let R = 15; let T = 1;
         const E = 'cristiangodoymarchant@gmail.com'; 
         const K = 'Isigod5815';
 
-        function setT(t, b) {
-            T = t;
-            document.getElementById('t1').classList.toggle('active-tab', t===1);
-            document.getElementById('t3').classList.toggle('active-tab', t===3);
-            ini();
-        }
+        function setR(km, b){ R=km; upd(b, '.btn-r'); ini(); }
+        function setT(t, b){ T=t; upd(b, '.btn-t'); ini(); }
+        function upd(b, cls){ document.querySelectorAll(cls).forEach(x=>x.classList.remove('tab-active')); b.classList.add('tab-active'); }
 
         async function ini() {
             const list = document.getElementById('lista');
-            list.innerHTML = '<p class="text-center text-gray-500 animate-pulse uppercase font-bold py-10">Buscando ahorro...</p>';
+            list.innerHTML = '<p class="text-center text-green-500 animate-pulse font-bold">BUSCANDO PRECIOS...</p>';
             navigator.geolocation.getCurrentPosition(async (pos) => {
                 try {
                     const url = `https://api.cne.cl/v3/combustibles/vehicular/estaciones?token=${K}&email=${E}`;
+                    // Este puente (corsproxy) es el que mejor funciona hoy en Chile
                     const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`);
                     const json = await res.json();
                     const d = JSON.parse(json.contents);
-                    render(d.data, pos.coords.latitude, pos.coords.longitude);
-                } catch (e) { list.innerHTML = "Error de red. Refresca."; }
-            });
-        }
+                    
+                    const rad = Math.PI/180;
+                    const f = d.data.map(e => {
+                        const dLa = (e.ubicacion.latitud - pos.coords.latitude) * rad;
+                        const dLo = (e.ubicacion.longitud - pos.coords.longitude) * rad;
+                        const a = Math.sin(dLa/2)**2 + Math.cos(pos.coords.latitude*rad) * Math.cos(e.ubicacion.latitud*rad) * Math.sin(dLo/2)**2;
+                        return {...e, dist: 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))};
+                    }).filter(e => e.dist <= R).sort((a,b) => {
+                        const pa = T==1 ? a.precios['gasolina 93'] : a.precios['petroleo diesel'];
+                        const pb = T==1 ? b.precios['gasolina 93'] : b.precios['petroleo diesel'];
+                        return pa - pb;
+                    });
 
-        function render(data, uLa, uLo) {
-            const rad = Math.PI/180;
-            let f = data.map(e => {
-                const dLa = (e.ubicacion.latitud - uLa) * rad;
-                const dLo = (e.ubicacion.longitud - uLo) * rad;
-                const a = Math.sin(dLa/2)**2 + Math.cos(uLa*rad) * Math.cos(e.ubicacion.latitud*rad) * Math.sin(dLo/2)**2;
-                return {...e, dist: 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))};
-            }).filter(e => e.dist <= 25).sort((a,b) => {
-                const pa = T==1 ? a.precios['gasolina 93'] : a.precios['petroleo diesel'];
-                const pb = T==1 ? b.precios['gasolina 93'] : b.precios['petroleo diesel'];
-                return pa - pb;
+                    let h = '';
+                    f.forEach(e => {
+                        const p = T==1 ? e.precios['gasolina 93'] : e.precios['petroleo diesel'];
+                        if(!p) return;
+                        h += `<div class="glass p-5 mb-4">
+                            <div class="flex justify-between font-bold text-white uppercase italic"><span>${e.nombre_fantasia}</span><span class="text-green-400 text-xs">${e.dist.toFixed(1)}KM</span></div>
+                            <div class="text-3xl font-black text-green-500 my-2">$${p}</div>
+                            <button onclick="window.location.href='waze://?ll=${e.ubicacion.latitud},${e.ubicacion.longitud}&navigate=yes'" class="w-full bg-[#33ccff] text-black font-black py-4 rounded-xl text-xs uppercase tracking-widest">WAZE</button>
+                        </div>`;
+                    });
+                    list.innerHTML = h || '<p class="text-center">No hay bombas cerca.</p>';
+                } catch (e) { list.innerHTML = '<p class="text-center text-red-500">Error de red. Refresca.</p>'; }
             });
-
-            let h = '';
-            f.slice(0, 15).forEach((e, i) => {
-                const p = T==1 ? e.precios['gasolina 93'] : e.precios['petroleo diesel'];
-                if(!p) return;
-                h += `
-                <div class="glass-card p-6 relative">
-                    <div class="flex justify-between items-start mb-4">
-                        <div class="pr-6">
-                            <h2 class="text-xl font-black text-white uppercase leading-none">${e.nombre_fantasia}</h2>
-                            <p class="text-[10px] text-gray-400 mt-2 uppercase italic">${e.direccion}</p>
-                        </div>
-                        <span class="bg-white/10 px-3 py-1 rounded-full text-[11px] font-bold text-blue-400">${e.dist.toFixed(1)} KM</span>
-                    </div>
-                    <div class="price-box p-4 mb-5 text-center">
-                        <p class="text-[10px] text-gray-500 font-bold uppercase mb-1">${T==1?'93 OCTANOS':'PETROLEO DIESEL'}</p>
-                        <p class="text-3xl font-black text-green-500">$${p}</p>
-                    </div>
-                    <button onclick="window.location.href='waze://?ll=${e.ubicacion.latitud},${e.ubicacion.longitud}&navigate=yes'" 
-                        class="w-full bg-sky-400 text-black font-black py-4 rounded-2xl text-xs uppercase tracking-widest">NAVEGAR CON WAZE</button>
-                </div>`;
-            });
-            document.getElementById('lista').innerHTML = h;
         }
         ini();
     </script>
