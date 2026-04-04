@@ -3,88 +3,101 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Voltaic Spa | v1.3</title>
+    <title>Voltaic Spa | v2.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        :root { --accent: #22c55e; --bg: #000; --card: rgba(30, 41, 59, 0.8); }
-        body { background: var(--bg); color: #fff; font-family: -apple-system, system-ui, sans-serif; margin: 0; min-height: 100vh; }
-        .glass { background: var(--card); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; }
-        .tab-active { background: #22c55e !important; color: #000 !important; font-weight: bold; }
-        .pulse { animation: pulse 2s infinite; }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        body { background: #000; color: #fff; font-family: -apple-system, sans-serif; }
+        .glass-card { background: #1e293b; border-radius: 24px; border: 1px solid rgba(255,255,255,0.1); }
+        .price-box { background: #0f172a; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); }
+        .btn-green { background: #22c55e; color: #000; font-weight: 800; border-radius: 12px; }
+        .btn-dark { background: #1e293b; color: #94a3b8; font-weight: 600; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); }
+        .active-tab { border: 2px solid #22c55e; color: #22c55e !important; background: rgba(34, 197, 94, 0.1); }
+        .badge-top { background: #22c55e; color: #000; font-size: 10px; font-weight: 900; padding: 2px 8px; border-radius: 10px; position: absolute; top: -10px; right: 20px; }
     </style>
 </head>
-<body class="p-4 pb-10">
-    <header class="flex justify-between items-center mb-6 pt-4">
+<body class="p-4 pb-20">
+    <header class="flex justify-between items-center mb-6 pt-2">
         <div>
-            <h1 class="text-2xl font-black italic tracking-tighter uppercase text-white">VOLTAIC<span class="text-green-500 not-italic font-light">spa</span></h1>
-            <p id="status" class="text-[9px] text-green-400 font-mono tracking-widest pulse uppercase">GPS ACTIVO ✅</p>
+            <h1 class="text-2xl font-black italic text-white uppercase">VOLTAIC<span class="text-blue-400 not-italic font-light">spa</span></h1>
+            <p class="text-[10px] text-green-400 font-bold uppercase tracking-widest">GPS CONECTADO ✅</p>
         </div>
-        <div class="w-10 h-10 glass flex items-center justify-center text-lg">⚡</div>
+        <div class="w-10 h-10 glass-card flex items-center justify-center text-xl">📍</div>
     </header>
 
-    <p class="text-[9px] uppercase tracking-widest text-gray-500 mb-2 ml-1">Distancia de búsqueda</p>
-    <div class="glass p-1 flex gap-1 mb-4 text-[10px] font-bold">
-        <button onclick="setR(15, this)" class="btn-r flex-1 py-3 rounded-xl tab-active">15 KM</button>
-        <button onclick="setR(35, this)" class="btn-r flex-1 py-3 rounded-xl">35 KM</button>
-        <button onclick="setR(50, this)" class="btn-r flex-1 py-3 rounded-xl">50 KM</button>
+    <div class="grid grid-cols-2 gap-3 mb-8">
+        <button onclick="setMode('price')" id="btn-baratas" class="btn-dark py-4 flex items-center justify-center gap-2 active-tab">💰 BARATAS</button>
+        <button onclick="setMode('dist')" id="btn-cercanas" class="btn-dark py-4 flex items-center justify-center gap-2">📍 CERCANAS</button>
     </div>
 
-    <p class="text-[9px] uppercase tracking-widest text-gray-500 mb-2 ml-1">Tipo de Combustible</p>
-    <div class="glass p-1 flex gap-1 mb-6 text-[10px] font-bold">
-        <button onclick="setT(1, this)" class="btn-t flex-1 py-3 rounded-xl tab-active">93 OCT</button>
-        <button onclick="setT(2, this)" class="btn-t flex-1 py-3 rounded-xl">95 OCT</button>
-        <button onclick="setT(3, this)" class="btn-t flex-1 py-3 rounded-xl">DIESEL</button>
+    <div id="lista" class="space-y-6">
+        <p class="text-center text-gray-500 animate-pulse uppercase font-bold py-10">Sincronizando precios...</p>
     </div>
-
-    <div id="lista" class="space-y-4 text-center py-10 text-gray-500">Iniciando sistemas...</div>
 
     <script>
-        let R = 15; let T = 1; 
+        let mode = 'price';
         const E = 'cristiangodoymarchant@gmail.com'; 
         const K = 'Isigod5815';
 
-        function setR(km, b){ R=km; upd(b, '.btn-r'); ini(); }
-        function setT(t, b){ T=t; upd(b, '.btn-t'); ini(); }
-        function upd(b, cls){ document.querySelectorAll(cls).forEach(x=>x.classList.remove('tab-active')); b.classList.add('tab-active'); }
-
-        async function ini() {
-            const list = document.getElementById('lista');
-            list.innerHTML = '<p class="pulse text-green-500 font-bold uppercase tracking-widest">Conectando con CNE...</p>';
-            navigator.geolocation.getCurrentPosition(async (pos) => {
-                const uLa = pos.coords.latitude; const uLo = pos.coords.longitude;
-                try {
-                    const url = `https://api.cne.cl/v3/combustibles/vehicular/estaciones?token=${K}&email=${E}`;
-                    const res = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`);
-                    const d = await res.json();
-                    render(d.data, uLa, uLo);
-                } catch (e) {
-                    list.innerHTML = '<p class="text-red-400">Error de conexión. Reintenta.</p>';
-                }
-            }, () => { list.innerHTML = "Activa el GPS."; });
+        function setMode(m) {
+            mode = m;
+            document.getElementById('btn-baratas').classList.toggle('active-tab', m==='price');
+            document.getElementById('btn-cercanas').classList.toggle('active-tab', m==='dist');
+            ini();
         }
 
-        function dist(la1, lo1, la2, lo2) {
-            const rad = x => x * Math.PI / 180;
-            const a = Math.sin(rad(la2-la1)/2)**2 + Math.cos(rad(la1)) * Math.cos(rad(la2)) * Math.sin(rad(lo2-lo1)/2)**2;
-            return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        async function ini() {
+            navigator.geolocation.getCurrentPosition(async (pos) => {
+                try {
+                    const url = `https://api.cne.cl/v3/combustibles/vehicular/estaciones?token=${K}&email=${E}`;
+                    const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`);
+                    const json = await res.json();
+                    const d = JSON.parse(json.contents);
+                    render(d.data, pos.coords.latitude, pos.coords.longitude);
+                } catch (e) { document.getElementById('lista').innerHTML = "Error de red."; }
+            });
         }
 
         function render(data, uLa, uLo) {
+            const rad = Math.PI/180;
+            let list = data.map(e => {
+                const dLa = (e.ubicacion.latitud - uLa) * rad;
+                const dLo = (e.ubicacion.longitud - uLo) * rad;
+                const a = Math.sin(dLa/2)**2 + Math.cos(uLa*rad) * Math.cos(e.ubicacion.latitud*rad) * Math.sin(dLo/2)**2;
+                return {...e, dist: 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))};
+            }).filter(e => e.dist <= 20);
+
+            if(mode === 'price') list.sort((a,b) => a.precios['gasolina 93'] - b.precios['gasolina 93']);
+            else list.sort((a,b) => a.dist - b.dist);
+
             let h = '';
-            const f = data.map(e => ({...e, d: dist(uLa, uLo, e.ubicacion.latitud, e.ubicacion.longitud)}))
-                         .filter(e => e.d <= R).sort((a,b) => a.d - b.d);
-            if(f.length === 0) { list.innerHTML = "No hay bombas cerca."; return; }
-            f.forEach(e => {
-                const p = T==1 ? e.precios['gasolina 93'] : T==2 ? e.precios['gasolina 95'] : e.precios['petroleo diesel'];
-                if(!p) return;
-                h += `<div class="glass p-5 mb-4 text-left">
-                    <div class="flex justify-between items-start mb-2 text-white">
-                        <h3 class="font-bold uppercase italic">${e.nombre_fantasia}</h3>
-                        <span class="text-green-400 font-mono">${e.d.toFixed(1)} KM</span>
+            list.slice(0, 15).forEach((e, i) => {
+                h += `
+                <div class="glass-card p-6 relative">
+                    ${i === 0 ? '<span class="badge-top text-black">TOP</span>' : ''}
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="pr-8">
+                            <h2 class="text-xl font-black text-white uppercase leading-none">${e.nombre_fantasia}</h2>
+                            <p class="text-[10px] text-gray-400 mt-2 uppercase italic leading-tight">📍 ${e.direccion}, ${e.nombre_comuna}</p>
+                        </div>
+                        <span class="btn-dark px-3 py-1 text-[11px] font-bold">${e.dist.toFixed(1)} KM</span>
                     </div>
-                    <p class="text-green-500 text-xl font-black mb-4">$${p}</p>
-                    <button onclick="window.location.href='waze://?ll=${e.ubicacion.latitud},${e.ubicacion.longitud}&navigate=yes'" class="w-full bg-[#33ccff] text-black font-bold py-3 rounded-xl text-xs uppercase">Waze</button>
+                    
+                    <div class="grid grid-cols-2 gap-3 mb-5">
+                        <div class="price-box p-3 text-center">
+                            <p class="text-[9px] text-gray-500 font-bold uppercase mb-1">93 OCT</p>
+                            <p class="text-2xl font-black text-green-500">$${e.precios['gasolina 93']}</p>
+                        </div>
+                        <div class="price-box p-3 text-center">
+                            <p class="text-[9px] text-gray-500 font-bold uppercase mb-1">95 OCT</p>
+                            <p class="text-2xl font-black text-blue-400">$${e.precios['gasolina 95']}</p>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-2">
+                        <button onclick="window.location.href='waze://?ll=${e.ubicacion.latitud},${e.ubicacion.longitud}&navigate=yes'" 
+                            class="flex-1 bg-sky-400 text-black font-black py-4 rounded-2xl text-xs uppercase tracking-widest">WAZE</button>
+                        <button class="w-14 btn-dark flex items-center justify-center text-lg">📍</button>
+                    </div>
                 </div>`;
             });
             document.getElementById('lista').innerHTML = h;
