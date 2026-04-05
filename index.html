@@ -42,11 +42,10 @@
 
             navigator.geolocation.getCurrentPosition(async (pos) => {
                 try {
-                    // CONEXIÓN DIRECTA (Sin pasar por Vercel)
-                    const api = `https://api.cne.cl/v3/combustibles/vehicular/estaciones?token=${creds.k}&email=${creds.e}`;
+                    // AQUÍ ESTÁ EL "TÚNEL" MÁGICO (CORS PROXY)
+                    const api = `https://corsproxy.io/?https://api.cne.cl/v3/combustibles/vehicular/estaciones?token=${creds.k}&email=${creds.e}`;
                     
                     const res = await fetch(api);
-                    if (!res.ok) throw new Error('CORS');
                     const d = await res.json();
                     
                     if(!d.data) throw new Error('Sin datos');
