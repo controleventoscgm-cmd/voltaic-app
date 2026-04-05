@@ -1,8 +1,0 @@
-{
-  "rewrites": [
-    {
-      "source": "/api/bencina",
-      "destination": "https://api.cne.cl/v3/combustibles/vehicular/estaciones"
-    }
-  ]
-}
