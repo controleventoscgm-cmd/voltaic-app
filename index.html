@@ -24,7 +24,7 @@
     </div>
 
     <div id="lista" class="space-y-4">
-        <div class="py-20 text-center text-gray-500 font-bold uppercase text-xs italic">Iniciando motor privado...</div>
+        <div class="py-20 text-center text-gray-500 font-bold uppercase text-xs italic">Cargando Bencineras...</div>
     </div>
 
     <script>
@@ -34,7 +34,7 @@
         async function cargar(tipoSeleccionado = tipoActual) {
             tipoActual = tipoSeleccionado;
             const list = document.getElementById('lista');
-            list.innerHTML = '<div class="py-20 text-center text-green-400 font-black animate-pulse uppercase">Conectando Servidor Voltaic...</div>';
+            list.innerHTML = '<div class="py-20 text-center text-green-400 font-black animate-pulse uppercase">Buscando...</div>';
             
             const btns = document.querySelectorAll('button');
             btns[0].className = `py-4 rounded-2xl text-xs font-bold uppercase ${tipoActual === 1 ? 'btn-green' : 'btn-dark'}`;
@@ -42,11 +42,11 @@
 
             navigator.geolocation.getCurrentPosition(async (pos) => {
                 try {
-                    // Usando tu propio puente Vercel
-                    const api = `/api/bencina?token=${creds.k}&email=${creds.e}`;
+                    // CONEXIÓN DIRECTA (Sin pasar por Vercel)
+                    const api = `https://api.cne.cl/v3/combustibles/vehicular/estaciones?token=${creds.k}&email=${creds.e}`;
                     
                     const res = await fetch(api);
-                    if (!res.ok) throw new Error('Bloqueo');
+                    if (!res.ok) throw new Error('CORS');
                     const d = await res.json();
                     
                     if(!d.data) throw new Error('Sin datos');
@@ -89,7 +89,7 @@
                     });
                     list.innerHTML = html || '<p class="text-center py-10 text-gray-500 font-bold uppercase">Sin bombas cerca.</p>';
                 } catch (err) {
-                    list.innerHTML = '<div class="p-8 text-center text-red-500 font-bold uppercase text-xs italic">Error de servidor. Reintenta.</div>';
+                    list.innerHTML = '<div class="p-8 text-center text-red-500 font-bold uppercase text-xs italic">Error de conexión. Reintenta.</div>';
                 }
             });
         }
