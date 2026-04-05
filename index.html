@@ -2,95 +2,81 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Voltaic Oficial</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Voltaic Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { background: #000; color: #fff; font-family: -apple-system, sans-serif; }
-        .glass { background: #111; border: 1px solid #333; border-radius: 20px; }
-        .tab-active { background: #22c55e !important; color: #000 !important; font-weight: 800; }
+        body { background: #0b0f1a; color: #fff; font-family: ui-sans-serif, system-ui, sans-serif; }
+        .card { background: #1a2235; border-radius: 24px; border: 1px solid #2d3748; }
+        .btn-green { background: #22c55e; color: #000; font-weight: 800; }
+        .btn-dark { background: #111827; color: #94a3b8; }
     </style>
 </head>
-<body class="p-4 pb-12">
-    <header class="flex justify-between items-center mb-8 pt-4 uppercase italic font-black text-white text-center">
-        <h1 class="text-2xl">VOLTAIC<span class="text-green-500 font-light not-italic">spa</span></h1>
-        <div class="w-12 h-12 glass flex items-center justify-center text-xl shadow-lg shadow-green-500/20">⚡</div>
+<body class="p-4 pb-20">
+    <header class="flex justify-between items-center mb-6 pt-2 font-black italic">
+        <h1 class="text-2xl text-white">VOLTAIC<span class="text-blue-500 not-italic font-light">spa</span></h1>
+        <div class="px-3 py-1 bg-gray-900 border border-green-500/30 rounded-full text-[10px] text-green-500 font-bold uppercase">GPS Activo</div>
     </header>
 
-    <div class="space-y-6 mb-8">
-        <div class="glass p-1 flex gap-1 text-[10px] font-bold uppercase">
-            <button onclick="setR(15, this)" class="btn-r flex-1 py-3 rounded-xl tab-active">15 KM</button>
-            <button onclick="setR(35, this)" class="btn-r flex-1 py-3 rounded-xl">35 KM</button>
-            <button onclick="setR(50, this)" class="btn-r flex-1 py-3 rounded-xl">50 KM</button>
-        </div>
-        <div class="glass p-1 flex gap-1 text-[10px] font-bold uppercase">
-            <button onclick="setT(1, this)" id="t1" class="btn-t flex-1 py-3 rounded-xl tab-active">93 Oct</button>
-            <button onclick="setT(3, this)" id="t3" class="btn-t flex-1 py-3 rounded-xl">Diesel</button>
-        </div>
+    <div class="grid grid-cols-2 gap-3 mb-8 bg-black/40 p-1.5 rounded-3xl border border-gray-800">
+        <button onclick="cargar()" class="py-4 rounded-2xl text-xs font-bold uppercase btn-green">🔄 Actualizar</button>
+        <button class="py-4 rounded-2xl text-xs font-bold uppercase btn-dark">93 OCT</button>
     </div>
 
     <div id="lista" class="space-y-4">
-        <p class="text-center text-gray-500 animate-pulse py-10 font-bold uppercase text-xs italic text-center">Conectando...</p>
+        <div class="py-20 text-center animate-pulse text-gray-500 font-bold uppercase text-xs italic">Sincronizando...</div>
     </div>
 
     <script>
-        let R = 15; let T = 1;
-        const E = 'cristiangodoymarchant@gmail.com'; 
-        const K = 'Isigod5815';
+        const creds = { e: 'cristiangodoymarchant@gmail.com', k: 'Isigod5815' };
 
-        function setR(km, b){ R=km; upd(b, '.btn-r'); ini(); }
-        function setT(t, b){ T=t; upd(b, '.btn-t'); ini(); }
-        function upd(b, cls){ document.querySelectorAll(cls).forEach(x=>x.classList.remove('tab-active')); b.classList.add('tab-active'); }
-
-        async function ini() {
+        async function cargar() {
             const list = document.getElementById('lista');
-            list.innerHTML = '<div class="py-10 text-center text-green-500 font-black animate-bounce uppercase text-xs italic">OBTENIENDO DATOS...</div>';
+            list.innerHTML = '<div class="py-20 text-center text-blue-400 font-black animate-bounce uppercase">Buscando Precios...</div>';
             
             navigator.geolocation.getCurrentPosition(async (pos) => {
                 try {
-                    const api = `https://api.cne.cl/v3/combustibles/vehicular/estaciones?token=${K}&email=${E}`;
-                    // Este puente permite que el gobierno nos dé los datos sin bloqueos de seguridad
-                    const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(api)}`);
+                    const api = `https://api.cne.cl/v3/combustibles/vehicular/estaciones?token=${creds.k}&email=${creds.e}`;
+                    // Proxy AllOrigins para saltar el bloqueo de seguridad (CORS)
+                    const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(api)}&ts=${Date.now()}`);
                     const json = await res.json();
                     const d = JSON.parse(json.contents);
                     
                     const rad = Math.PI/180;
-                    const f = d.data.map(e => {
+                    const estaciones = d.data.map(e => {
                         const dLa = (e.ubicacion.latitud - pos.coords.latitude) * rad;
                         const dLo = (e.ubicacion.longitud - pos.coords.longitude) * rad;
                         const a = Math.sin(dLa/2)**2 + Math.cos(pos.coords.latitude*rad) * Math.cos(e.ubicacion.latitud*rad) * Math.sin(dLo/2)**2;
-                        return {...e, dist: 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))};
-                    }).filter(e => e.dist <= R).sort((a,b) => {
-                        const pa = T==1 ? a.precios['gasolina 93'] : a.precios['petroleo diesel'];
-                        const pb = T==1 ? b.precios['gasolina 93'] : b.precios['petroleo diesel'];
-                        return (pa || 9999) - (pb || 9999);
-                    });
+                        const dist = 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                        return {...e, dist};
+                    }).filter(e => e.dist <= 20).sort((a, b) => (a.precios['gasolina 93'] || 9999) - (b.precios['gasolina 93'] || 9999));
 
-                    let h = '';
-                    f.slice(0, 15).forEach(e => {
-                        const p = T==1 ? e.precios['gasolina 93'] : e.precios['petroleo diesel'];
-                        if(!p) return;
-                        h += `
-                        <div class="glass p-5 mb-4 border-l-4 border-green-500 shadow-xl text-left text-white">
-                            <div class="flex justify-between font-bold uppercase italic text-xs mb-1">
-                                <span>${e.nombre_fantasia}</span>
-                                <span class="text-green-400 font-mono">${e.dist.toFixed(1)}KM</span>
+                    let html = '';
+                    estaciones.slice(0, 10).forEach(e => {
+                        const p93 = e.precios['gasolina 93'] || '---';
+                        html += `
+                        <div class="card p-6 shadow-2xl border-l-4 border-green-500">
+                            <div class="flex justify-between items-start mb-4">
+                                <div class="max-w-[70%] text-left">
+                                    <h2 class="text-xl font-black uppercase italic leading-tight text-white">${e.nombre_fantasia}</h2>
+                                    <p class="text-[9px] text-gray-500 uppercase mt-1 leading-tight">${e.direccion}</p>
+                                </div>
+                                <div class="bg-blue-500/10 text-blue-400 px-3 py-1 rounded-full text-[10px] font-bold border border-blue-500/20">${e.dist.toFixed(1)} KM</div>
                             </div>
-                            <p class="text-[9px] text-gray-500 uppercase mb-4 leading-tight">${e.direccion}</p>
-                            <div class="flex items-center justify-between">
-                                <div class="text-3xl font-black text-green-500">$${p}</div>
+                            <div class="flex items-center justify-between mt-4">
+                                <div class="text-3xl font-black text-green-500">$${p93}</div>
                                 <button onclick="window.location.href='waze://?ll=${e.ubicacion.latitud},${e.ubicacion.longitud}&navigate=yes'" 
                                     class="bg-[#33ccff] text-black font-black px-6 py-3 rounded-xl text-[10px] uppercase shadow-lg active:scale-95 transition-transform">WAZE</button>
                             </div>
                         </div>`;
                     });
-                    list.innerHTML = h || '<p class="text-center py-10 text-gray-500 uppercase font-bold text-xs italic">Sin estaciones cerca.</p>';
-                } catch (e) { 
-                    list.innerHTML = '<div class="text-center p-6 text-red-500 font-bold uppercase italic text-xs">Error de red. Reintenta.</div>'; 
+                    list.innerHTML = html || '<p class="text-center py-10 text-gray-500 font-bold uppercase">Sin bombas cerca.</p>';
+                } catch (err) {
+                    list.innerHTML = '<div class="p-8 text-center text-red-500 font-bold uppercase text-xs italic">Error de Red. Reintenta.</div>';
                 }
             });
         }
-        ini();
+        cargar();
     </script>
 </body>
 </html>
