@@ -12,25 +12,25 @@
     </style>
 </head>
 <body class="p-4 pb-12">
-    <header class="flex justify-between items-center mb-8 pt-4 uppercase italic font-black">
+    <header class="flex justify-between items-center mb-8 pt-4 uppercase italic font-black text-white text-center">
         <h1 class="text-2xl">VOLTAIC<span class="text-green-500 font-light not-italic">spa</span></h1>
-        <div class="w-12 h-12 glass flex items-center justify-center text-xl">⚡</div>
+        <div class="w-12 h-12 glass flex items-center justify-center text-xl shadow-lg shadow-green-500/20">⚡</div>
     </header>
 
-    <div class="space-y-6 mb-8 text-left">
+    <div class="space-y-6 mb-8">
         <div class="glass p-1 flex gap-1 text-[10px] font-bold uppercase">
             <button onclick="setR(15, this)" class="btn-r flex-1 py-3 rounded-xl tab-active">15 KM</button>
             <button onclick="setR(35, this)" class="btn-r flex-1 py-3 rounded-xl">35 KM</button>
             <button onclick="setR(50, this)" class="btn-r flex-1 py-3 rounded-xl">50 KM</button>
         </div>
         <div class="glass p-1 flex gap-1 text-[10px] font-bold uppercase">
-            <button onclick="setT(1, this)" id="t1" class="btn-t flex-1 py-3 rounded-xl tab-active uppercase">93 Oct</button>
-            <button onclick="setT(3, this)" id="t3" class="btn-t flex-1 py-3 rounded-xl uppercase">Diesel</button>
+            <button onclick="setT(1, this)" id="t1" class="btn-t flex-1 py-3 rounded-xl tab-active">93 Oct</button>
+            <button onclick="setT(3, this)" id="t3" class="btn-t flex-1 py-3 rounded-xl">Diesel</button>
         </div>
     </div>
 
     <div id="lista" class="space-y-4">
-        <p class="text-center text-gray-500 animate-pulse py-10 font-bold uppercase text-xs italic text-center">Conectando al servidor CNE...</p>
+        <p class="text-center text-gray-500 animate-pulse py-10 font-bold uppercase text-xs italic text-center">Conectando...</p>
     </div>
 
     <script>
@@ -44,12 +44,15 @@
 
         async function ini() {
             const list = document.getElementById('lista');
-            list.innerHTML = '<div class="py-10 text-center text-green-500 font-black animate-bounce uppercase text-xs italic text-center">OBTENIENDO PRECIOS...</div>';
+            list.innerHTML = '<div class="py-10 text-center text-green-500 font-black animate-bounce uppercase text-xs italic">OBTENIENDO DATOS...</div>';
+            
             navigator.geolocation.getCurrentPosition(async (pos) => {
                 try {
-                    const url = `https://api.cne.cl/v3/combustibles/vehicular/estaciones?token=${K}&email=${E}`;
-                    const res = await fetch(url);
-                    const d = await res.json();
+                    const api = `https://api.cne.cl/v3/combustibles/vehicular/estaciones?token=${K}&email=${E}`;
+                    // Este puente permite que el gobierno nos dé los datos sin bloqueos de seguridad
+                    const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(api)}`);
+                    const json = await res.json();
+                    const d = JSON.parse(json.contents);
                     
                     const rad = Math.PI/180;
                     const f = d.data.map(e => {
@@ -67,8 +70,9 @@
                     f.slice(0, 15).forEach(e => {
                         const p = T==1 ? e.precios['gasolina 93'] : e.precios['petroleo diesel'];
                         if(!p) return;
-                        h += `<div class="glass p-5 mb-4 border-l-4 border-green-500 text-left shadow-xl">
-                            <div class="flex justify-between font-bold text-white uppercase italic text-xs mb-1">
+                        h += `
+                        <div class="glass p-5 mb-4 border-l-4 border-green-500 shadow-xl text-left text-white">
+                            <div class="flex justify-between font-bold uppercase italic text-xs mb-1">
                                 <span>${e.nombre_fantasia}</span>
                                 <span class="text-green-400 font-mono">${e.dist.toFixed(1)}KM</span>
                             </div>
@@ -81,7 +85,9 @@
                         </div>`;
                     });
                     list.innerHTML = h || '<p class="text-center py-10 text-gray-500 uppercase font-bold text-xs italic">Sin estaciones cerca.</p>';
-                } catch (e) { list.innerHTML = '<div class="text-center p-6 text-red-500 font-bold uppercase italic text-xs">Error de servidor CNE...</div>'; }
+                } catch (e) { 
+                    list.innerHTML = '<div class="text-center p-6 text-red-500 font-bold uppercase italic text-xs">Error de red. Reintenta.</div>'; 
+                }
             });
         }
         ini();
